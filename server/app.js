@@ -12,15 +12,38 @@ const { Band, Musician, Instrument } = require('./db/models');
 // Express using json - DO NOT MODIFY
 app.use(express.json());
 
+//import Op to use in queries
+const { Op } = require("sequelize");
 
 // STEP 1: Creating from an associated model (One-to-Many)
 app.post('/bands/:bandId/musicians', async (req, res, next) => {
     // Your code here
+    let band = await Band.findByPk(req.params.bandId);
+    let musician = await band.createMusician({
+        firstName: req.body.firstName,
+        lastName: req.body.lastName
+    });
+    res.json({
+        message: `Created new musician for the band ${band.name}`,
+        musician: musician
+    });
 })
 
 // STEP 2: Connecting two existing records (Many-to-Many)
 app.post('/musicians/:musicianId/instruments', async (req, res, next) => {
     // Your code here
+    let musician = await Musician.findByPk(req.params.musicianId);
+    let instruments = await Instrument.findAll({
+        where: {
+            id: {
+                [Op.in]: req.body.instrumentIds
+            }
+        }
+    });
+    musician.addInstruments(instruments);
+    res.json(
+        {message: `Associated ${musician.firstName} with instruments ${req.body.instrumentIds}`}
+    );
 })
 
 
@@ -36,7 +59,7 @@ app.get('/bands/:bandId', async (req, res, next) => {
 // Get the details all bands and associated musicians - DO NOT MODIFY
 app.get('/bands', async (req, res, next) => {
     const payload = await Band.findAll({
-        include: {model: Musician}, 
+        include: {model: Musician},
         order: [['name'], [Musician, 'firstName']]
     });
     res.json(payload);
@@ -54,7 +77,7 @@ app.get('/musicians/:musicianId', async (req, res, next) => {
 // Get the details all musicians and associated instruments - DO NOT MODIFY
 app.get('/musicians', async (req, res, next) => {
     const payload = await Musician.findAll({
-        include: { model: Instrument }, 
+        include: { model: Instrument },
         order: [['firstName'], ['lastName'], [Instrument, 'type']]
     });
     res.json(payload);
